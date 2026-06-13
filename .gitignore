@@ -22,3 +22,14 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# environment variables
+.env
+backend/.env
+# database
+*.db
+*.sqlite
+*.sqlite3
+
+# flask instance folder
+instance/
+backend/instance/
