@@ -1,0 +1,11 @@
+from flask import Blueprint
+
+main_bp = Blueprint("main", __name__)
+
+@main_bp.route("/")
+def home():
+    return {"message": "ApexGlow API running"}
+
+@main_bp.route("/ping")
+def ping():
+    return {"status": "ok"}
