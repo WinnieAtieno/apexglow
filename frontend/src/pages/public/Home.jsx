@@ -1,9 +1,8 @@
 import React from 'react'
-import Hero from '../../components/layout/Hero'
 
 function Home() {
   return (
-    <Hero/>
+    <div>Home</div>
   )
 }
 
