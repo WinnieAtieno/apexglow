@@ -1,40 +1,65 @@
 import uuid
+from datetime import datetime, timezone
 from ..extensions import db
-
 
 class Service(db.Model):
     __tablename__ = "services"
 
-    # Unique Identifier (Unguessable 36-character UUID string)
-    id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    # ============================================================
+    # Primary Key
+    # ============================================================
+    id = db.Column(
+        db.String(36), 
+        primary_key=True, 
+        default=lambda: str(uuid.uuid4())
+    )
 
-    #  Package Details
+    # ============================================================
+    # Core Service Attributes
+    # ============================================================
     name = db.Column(
-        db.String(100),
+        db.String(100), 
         nullable=False
     )
-
+    
     price = db.Column(
-        db.Float,
-        nullable=False
+        db.Float, 
+        nullable=False,
+        default=0.0
     )
 
-    #  Multi-Tenant Link (Upgraded to match the 36-character UUID strings)
+    # ============================================================
+    # Multi-Tenant Workspace Links
+    # ============================================================
     carwash_id = db.Column(
         db.String(36),
-        db.ForeignKey("car_washes.id", ondelete="CASCADE"),
+        db.ForeignKey("carwashes.id", ondelete="CASCADE"),
         nullable=False
+    )
+
+    # ============================================================
+    # Metadata
+    # ============================================================
+    created_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc)
+    )
+
+    updated_at = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
     )
 
     # ============================================================
     # Relationships
     # ============================================================
     carwash = db.relationship(
-        "User" if "User" == "CarWash" else "CarWash", # Simple anchor back to the shop
+        "CarWash",
         back_populates="services"
     )
 
-    bookings = db.relationship(
-        "Booking",
-        back_populates="service"
-    )
+    def __repr__(self):
+        return f"<Service {self.name} (${self.price}) at Shop {self.carwash_id}>"

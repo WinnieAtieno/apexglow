@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify, request
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask_jwt_extended import (
     create_access_token,
     create_refresh_token,
@@ -13,155 +12,142 @@ from ..models.user import User
 auth_bp = Blueprint("auth", __name__)
 
 
-# ------------------------------------------------------------
-# PHASE 1: Frictionless Registration (Email & Password Only)
-# ------------------------------------------------------------
+# ============================================================
+# REGISTER
+# ============================================================
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.get_json() or {}
 
-    email = data.get("email")
-    password = data.get("password")
+    full_name = data.get("full_name", "").strip()
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
 
-    # 1. Enforce only the absolute bare minimum details
-    if not email or not password:
-        return jsonify({"error": "Email and password are required"}), 400
+    if not full_name or not email or not password:
+        return jsonify({"error": "Full name, email, and password are required"}), 400
 
-    # 2. Safety Check: Avoid duplicate registrations
-    user_exists = User.query.filter_by(email=email).first()
-    if user_exists:
-        return jsonify({"error": "User email already registered"}), 400
+    if len(full_name) < 2:
+        return jsonify({"error": "Full name must be at least 2 characters"}), 400
+
+    if len(password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
+
+    if User.query.filter_by(email=email).first():
+        return jsonify({"error": "Email is already registered"}), 400
 
     try:
-        hashed_password = generate_password_hash(password)
-
-        # 3. Create the empty user account shell (defaults to role='owner')
-        new_user = User(
+        user = User(
+            full_name=full_name,
             email=email,
-            password_hash=hashed_password,
             role="owner"
         )
-        
-        db.session.add(new_user)
-        db.session.commit() # Saves cleanly to the users table immediately
 
-        # 4. Generate immediate access tokens so they are auto-logged in
-        access_token = create_access_token(identity=str(new_user.id))
-        refresh_token = create_refresh_token(identity=str(new_user.id))
+        user.password = password  
+
+        db.session.add(user)
+        db.session.commit()
 
         return jsonify({
-            "message": "Account created successfully!",
-            "access_token": access_token,
-            "refresh_token": refresh_token,
+            "message": "Account created successfully",
+            "access_token": create_access_token(identity=user.id),
+            "refresh_token": create_refresh_token(identity=user.id),
             "user": {
-                "id": new_user.id,
-                "email": new_user.email,
-                "role": new_user.role,
-                "has_business": False # Flags the frontend to load the onboarding wizard page
+                "id": user.id,
+                "full_name": user.full_name,
+                "email": user.email,
+                "role": user.role,
+                "has_business": False
             }
         }), 201
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
-        return jsonify({"error": "Registration failed.", "details": str(e)}), 500
+        return jsonify({"error": "Registration failed"}), 500
 
 
-# -------------------------
+# ============================================================
 # LOGIN
-# -------------------------
+# ============================================================
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json() or {}
 
-    email = data.get("email")
-    password = data.get("password")
+    email = data.get("email", "").strip().lower()
+    password = data.get("password", "")
 
     if not email or not password:
         return jsonify({"error": "Email and password are required"}), 400
 
     user = User.query.filter_by(email=email).first()
 
+    # Generic error (prevents user enumeration)
+    if not user or not user.check_password(password):
+        return jsonify({"error": "Invalid credentials"}), 401
+
+    if not user.is_active:
+        return jsonify({"error": "Account is deactivated"}), 403
+
+    return jsonify({
+        "access_token": create_access_token(identity=user.id),
+        "refresh_token": create_refresh_token(identity=user.id),
+        "user": {
+            "id": user.id,
+            "full_name": user.full_name,
+            "email": user.email,
+            "role": user.role,
+            "accessible_shops": user.accessible_carwash_ids
+        }
+    }), 200
+
+
+# ============================================================
+# REFRESH TOKEN
+# ============================================================
+@auth_bp.route("/refresh", methods=["POST"])
+@jwt_required(refresh=True)
+def refresh():
+    user_id = get_jwt_identity()
+
+    return jsonify({
+        "access_token": create_access_token(identity=user_id)
+    }), 200
+
+
+# ============================================================
+# CURRENT USER
+# ============================================================
+@auth_bp.route("/me", methods=["GET"])
+@jwt_required()
+def get_profile():
+    user_id = get_jwt_identity()
+
+    user = db.session.get(User, user_id)
+
     if not user:
         return jsonify({"error": "User not found"}), 404
 
-    if not check_password_hash(user.password_hash, password):
-        return jsonify({"error": "Invalid credentials"}), 401
-
-    access_token = create_access_token(identity=str(user.id))
-    refresh_token = create_refresh_token(identity=str(user.id))
+    if not user.is_active:
+        return jsonify({"error": "Account is deactivated"}), 403
 
     return jsonify({
-        "access_token": access_token,
-        "refresh_token": refresh_token,
         "user": {
             "id": user.id,
+            "full_name": user.full_name,
             "email": user.email,
             "role": user.role,
-            "accessible_shops": user.accessible_carwash_ids 
+            "has_business": len(user.carwashes) > 0,
+            "accessible_shops": user.accessible_carwash_ids
         }
     }), 200
-from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
-
-# ------------------------------------------------------------
-# TOKEN REFRESH: Exchange a Refresh Token for a new Access Token
-# ------------------------------------------------------------
-@auth_bp.route("/refresh", methods=["POST"])
-@jwt_required(refresh=True) # CRITICAL: This strictly requires a REFRESH token, not an access token!
-def refresh():
-    # 1. Automatically extracts the User's UUID string from the active refresh token context
-    current_user_id = get_jwt_identity()
-    
-    # 2. Cook up a fresh, unexpired access token for their session
-    new_access_token = create_access_token(identity=str(current_user_id))
-    
-    return jsonify({
-        "access_token": new_access_token,
-        "message": "Access token refreshed successfully"
-    }), 200
 
 
-# -------------------------
-# PROTECTED ROUTE
-# -------------------------
+# ============================================================
+# TEST ENDPOINT
+# ============================================================
 @auth_bp.route("/protected", methods=["GET"])
 @jwt_required()
 def protected():
-    user_id = get_jwt_identity()
-
     return jsonify({
         "message": "JWT is working",
-        "user_id": user_id
-    }), 200
-
-
-# -------------------------
-# DASHBOARD
-# -------------------------
-@auth_bp.route("/dashboard", methods=["GET"])
-@jwt_required()
-def dashboard():
-    user_id = get_jwt_identity()
-    user = User.query.get(user_id)
-    
-    if not user:
-        return jsonify({"error": "User context invalid"}), 404
-
-    # Extract all car wash storefront details owned by this user
-    shops_data = []
-    if user.role == "owner":
-        shops_data = [{
-            "id": shop.id,
-            "name": shop.name,
-            "subdomain": shop.subdomain,
-            "location": shop.location
-        } for shop in user.carwashes]
-
-    return jsonify({
-        "message": "Welcome to ApexGlow Dashboard",
-        "user": {
-            "id": user.id,
-            "email": user.email,
-            "role": user.role
-        },
-        "businesses": shops_data
+        "user_id": get_jwt_identity()
     }), 200
