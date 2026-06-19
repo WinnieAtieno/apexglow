@@ -5,25 +5,34 @@ from ..extensions import db
 class Staff(db.Model):
     __tablename__ = "staff"
 
-    # Unique Identifier (36-character UUID string)
+    # ============================================================
+    # Primary Key
+    # ============================================================
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
 
-    #  Employment details (e.g., 'washer', 'cashier', 'manager')
+    # ============================================================
+    # Core Attributes
+    # ============================================================
+    # Employment details (e.g., 'washer', 'cashier', 'manager')
     position = db.Column(
-        db.String(50)
+        db.String(50),
+        nullable=False,
+        default="washer"
     )
 
-    # 3. Multi-Tenant Bridge Keys (Upgraded to match the 36-character UUID strings)
+    # ============================================================
+    # Multi-Tenant Bridge Foreign Keys
+    # ============================================================
     user_id = db.Column(
         db.String(36),
         db.ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        unique=True # Ensures one User can only have ONE active employee profile
+        unique=True # Tight constraint: One authentication User can have exactly ONE staff tracking profile
     )
 
     carwash_id = db.Column(
         db.String(36),
-        db.ForeignKey("car_washes.id", ondelete="CASCADE"),
+        db.ForeignKey("carwashes.id", ondelete="CASCADE"), # Fixed: Dropped underscore to point to carwashes
         nullable=False
     )
 
@@ -40,7 +49,5 @@ class Staff(db.Model):
         back_populates="staff_members"
     )
 
-    bookings = db.relationship(
-        "Booking",
-        back_populates="assigned_staff"
-    )
+    def __repr__(self):
+        return f"<Staff ID: {self.id} Position: {self.position} at Shop: {self.carwash_id}>"
