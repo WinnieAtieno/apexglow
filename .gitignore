@@ -38,3 +38,5 @@ venv/
 # flask instance folder
 instance/
 backend/instance/
+migrations/
+backend/migration/
