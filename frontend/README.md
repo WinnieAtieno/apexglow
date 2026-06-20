@@ -1,59 +1,97 @@
-# Project Overview
+# ApexGlow
 
-ApexGlow is a role-based car wash management system designed to help **car wash businesses manage bookings, staff assignments, and service workflows** in one centralized platform.
-The system is built around a real-world operational flow:
-
-Customer booking → Admin assignment → Staff execution → Completion tracking
-
-## 🔄 Core Workflow
-
-1. Customer books a car wash service
-2. Admin assigns job to staff
-3. Staff updates job status (Pending → In Progress → Completed)
-4. Customer tracks progress in real time
-  
-
-
-## 📌 Features
-
-### Authentication
-- Role-based login (Customer, Staff, Admin)
-
-### Booking System
-- Customers can book car wash services
-- Track booking status
-
-### Job Management
-- Staff can view and update assigned jobs
-- Admin assigns jobs to staff
-
-### Admin Dashboard
-- Manage users, bookings, and services
-
-### 🎨 UI & UX
-- Reusable UI components
-- Responsive layout
-- Clean dashboard interface
-- Toast notifications and loaders
+ApexGlow is a full-stack Car Wash Management Platform designed to help car wash businesses manage customers, bookings, staff, and operations efficiently.
 
 ---
 
-## 🚧 Future Improvements
+## 🚀 Features
 
-- Payment integration
-- SMS/Email notifications
-- Real-time updates (WebSockets)
-- Analytics dashboard
-- Multi-branch support
+- User Authentication (JWT-based login system)
+- Role-Based Access Control (Admin, Manager, Staff)
+- Customer Management
+- Booking & Scheduling System
+- Staff Management
+- Service Tracking
+- Analytics Dashboard (planned)
 
-## 🛠️ Setup Instructions
+---
 
-### 1. Clone the repo
-git clone https://github.com/WinnieAtieno/apexglow
+## 🧠 Project Goal
 
-### 2. Install dependencies
-npm install
+To build a scalable system that helps car wash owners:
+- Manage daily operations
+- Track bookings in real time
+- Assign staff efficiently
+- Improve customer experience
 
-### 3. Run development server
-npm run dev
+---
 
+## 🛠 Tech Stack
+
+### Frontend
+- React (Vite)
+- Tailwind CSS
+- JavaScript
+
+### Backend
+- Flask (Python)
+- PostgreSQL
+- JWT Authentication
+- REST APIs
+
+---
+
+## 📁 Project Structure
+```
+ApexGlow/
+├── frontend/
+│   └── React application (Vite + Tailwind)
+├── backend/
+│   └── Flask API (JWT, SQLAlchemy, REST routes)
+├── README.md
+```
+
+---
+
+## ⚙️ Backend Overview
+
+- Flask application factory pattern
+- Blueprints for modular routes
+- SQLAlchemy models
+- Authentication middleware
+- Secure password hashing
+
+---
+
+## 🔐 Security
+
+- JWT authentication
+- Password hashing (Werkzeug)
+- Protected API routes
+- Role-based permissions (RBAC)
+
+---
+
+## 📌 Current Status
+
+- Authentication system implemented
+- Frontend structure in progress
+- Backend architecture being refined
+- Database models under development
+
+---
+
+## 🧭 Next Steps
+
+- Complete RBAC system
+- Connect frontend to backend APIs
+- Deploy backend (Render / Railway)
+- Deploy frontend (Vercel)
+- Add analytics dashboard
+
+---
+
+## 👨‍💻 Author
+
+Built by Dev Atieno
+Full-stack Developer 
